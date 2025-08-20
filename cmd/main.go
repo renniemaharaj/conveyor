@@ -8,6 +8,8 @@ import (
 	"github.com/renniemaharaj/conveyor/pkg/conveyor"
 )
 
+// Define a jobParam struct
+// This can be anything, (any)
 type JobParam struct {
 	A string
 }

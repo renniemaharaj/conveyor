@@ -20,14 +20,15 @@ type Manager struct {
 	B *ConveyorBelt // The manager's conveyor belt
 }
 
-func BlankManager() *Manager {
+// Internal blank manager function
+func blankManager() *Manager {
 	m := &Manager{}
 	return m
 }
 
 // Create a new manager with default configuration
 func CreateManager() *Manager {
-	m := BlankManager().SetMinWorkers(1).SetMaxWorkers(100).
+	m := blankManager().SetMinWorkers(1).SetMaxWorkers(100).
 		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 	m.B = NewConveyorBelt()
 	m.quit = make(chan struct{})
