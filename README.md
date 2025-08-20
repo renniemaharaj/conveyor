@@ -57,23 +57,26 @@ Job {
 Manager specific job queues
 
 ```go
+// The conveyor belt struct containing a single channel of jobs
 type ConveyorBelt struct {
 	C chan Job
 }
 
+// Creates and returns a new ConveyorBelt with initialized channel
 func NewConveyorBelt() *ConveyorBelt {
 	return &ConveyorBelt{C: make(chan Job, 100)}
 }
 
+// Pushes a job to the conveyor belt
 func (b *ConveyorBelt) Push(j *Job) {
 	b.C <- *j
 }
 
+// Takes a job from the conveyor belt
 func (b *ConveyorBelt) Take() *Job {
 	j := <-b.C
 	return &j
 }
-
 ```
 
 Workers continuously pull jobs from their assigned channels.
@@ -98,8 +101,10 @@ m.Start()
 ### Adding Jobs
 
 ```go
+// Define a jobParam struct
+// This can be anything, (any)
 type JobParam struct {
-    A string
+	A string
 }
 
 jobParam := &JobParam{A: "Hello World"}
