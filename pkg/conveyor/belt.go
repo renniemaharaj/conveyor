@@ -1,4 +1,18 @@
 package conveyor
 
-// The channel, conveyor belt for all jobs
-var CONVEYOR_BELT = make(chan Job, 100)
+type ConveyorBelt struct {
+	C chan Job
+}
+
+func NewConveyorBelt() *ConveyorBelt {
+	return &ConveyorBelt{C: make(chan Job, 100)}
+}
+
+func (b *ConveyorBelt) Push(j *Job) {
+	b.C <- *j
+}
+
+func (b *ConveyorBelt) Take() *Job {
+	j := <-b.C
+	return &j
+}

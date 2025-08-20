@@ -13,19 +13,24 @@ type JobParam struct {
 }
 
 func main() {
-	m := conveyor.CreateManager() // Use the default manager or build a custom
-	// m := NewManager().SetMinWorkers(1).SetMaxWorkers(100).
-	// 	SetStepUpAt(10).SetStepDownAt(10).SetTimePerTicker(time.Second / 4)
+	manager := conveyor.CreateManager() // Use the default manager or build a custom
 
-	m.Start()
+	// manager := BlankManager().SetMinWorkers(1).SetMaxWorkers(100).
+	// 	SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 
+	// manager.B = NewConveyorBelt()
+	// manager.quit = make(chan struct{})
+
+	manager.Start()
+
+	// Unopinionated job param
 	jobParam := &JobParam{
 		A: "Hello World",
 	}
 
 	// Adding workers scenario
 	for range 100 {
-		conveyor.CONVEYOR_BELT <- conveyor.Job{
+		manager.B.Push(&conveyor.Job{
 			Context: context.Background(),
 			Param:   jobParam,
 			Consume: func(param any) error {
@@ -34,7 +39,7 @@ func main() {
 				fmt.Println(jParam.A)
 				return nil
 			},
-		}
+		})
 	}
 
 	select {}

@@ -8,24 +8,46 @@ import (
 
 // The manager shape
 type Manager struct {
-	mu         sync.Mutex
-	workers    []*Worker
-	ticker     *time.Ticker
-	quit       chan struct{}
-	minWorkers int
-	maxWorkers int
-	stepUpAt   int // if queue length > thresholdUp, scale up
-	stepDownAt int // if queue length < thresholdDown, scale down
+	mu      sync.Mutex
+	workers []*Worker
+	ticker  *time.Ticker
+	quit    chan struct{} // Manager's quit signal channel
+
+	minWorkersAllowed int
+	maxWorkersAllowed int
+	safeQueueLength   int // if queue length > thresholdUp, scale up
+
+	B *ConveyorBelt // The manager's conveyor belt
+}
+
+func BlankManager() *Manager {
+	m := &Manager{}
+	return m
+}
+
+// Create a new manager with default configuration
+func CreateManager() *Manager {
+	m := BlankManager().SetMinWorkers(1).SetMaxWorkers(100).
+		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
+	m.B = NewConveyorBelt()
+	m.quit = make(chan struct{})
+
+	log.Printf(`
+	Creating a manager. Will allow %d min, and %d max workers.
+	Will scale resources above %d jobs`+"\n",
+		m.minWorkersAllowed, m.maxWorkersAllowed, m.safeQueueLength)
+
+	return m
 }
 
 // Manager start function
 func (m *Manager) Start() {
 	// Initialize min workers
-	for range m.minWorkers {
+	for range m.minWorkersAllowed {
 		m.scaleWorkersUp()
 	}
 
-	// Routine
+	// Routine dynamically scales the manager's workers
 	go func() {
 		for {
 			select {
@@ -39,7 +61,7 @@ func (m *Manager) Start() {
 	}()
 }
 
-// Manager
+// Manager stop function will close cleanup its channel and stop ticker
 func (m *Manager) Stop() {
 	close(m.quit)
 	m.ticker.Stop()
@@ -50,12 +72,11 @@ func (m *Manager) routineCheck() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	queueLen := len(CONVEYOR_BELT)
-
-	if queueLen > m.stepUpAt && len(m.workers) < m.maxWorkers {
+	queueLen := len(m.B.C)
+	if queueLen > m.safeQueueLength && len(m.workers) < m.maxWorkersAllowed {
 		log.Printf("At %d current workers, scaling up. Jobs queued: %d\n", len(m.workers), queueLen)
 		m.scaleWorkersUp()
-	} else if queueLen < m.stepDownAt && len(m.workers) > m.minWorkers {
+	} else if queueLen <= m.safeQueueLength && len(m.workers) > m.minWorkersAllowed {
 		log.Printf("At %d current workers, scaling down. Jobs queued: %d\n", len(m.workers), queueLen)
 		m.scaleWorkersDown()
 	}
@@ -63,7 +84,7 @@ func (m *Manager) routineCheck() {
 
 // scaleWorkersUp internal function, creates and starts a new worker
 func (m *Manager) scaleWorkersUp() {
-	w := &Worker{}
+	w := NewWorker(m.B, len(m.workers)) // Create a worker by assigning the manager's conveyor belt
 	m.workers = append(m.workers, w)
 	go w.Start()
 }

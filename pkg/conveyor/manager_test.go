@@ -2,6 +2,7 @@ package conveyor
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -9,18 +10,24 @@ import (
 func TestManagerScaling(t *testing.T) {
 	minWorkers := 1
 
-	manager := CreateManager()
+	manager := CreateManager().SetTimePerTicker(time.Second / 10)
 	manager.Start()
 
 	// scale up scenario
-	for range 10 {
-		CONVEYOR_BELT <- Job{
+	for range 100 {
+		manager.B.Push(&Job{
 			Context: context.Background(),
 			Consume: func(j any) error {
 				time.Sleep(time.Second)
-				return nil
+				return fmt.Errorf("en error")
 			},
-		}
+			OnSuccess: func(w Worker, j *Job) {
+				fmt.Println("Test job completed")
+			},
+			OnError: func(w Worker, j *Job) {
+				fmt.Println("Test job failed")
+			},
+		})
 	}
 
 	time.Sleep(5 * time.Second) // Let workers scale up
@@ -31,7 +38,7 @@ func TestManagerScaling(t *testing.T) {
 	}
 
 	// scale down scenario
-	time.Sleep(15 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	// should have reduced workers by now
 	if len(manager.workers) != minWorkers {
