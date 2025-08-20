@@ -17,7 +17,7 @@ type JobParam struct {
 func main() {
 	manager := conveyor.CreateManager() // Use the default manager or build a custom
 
-	// manager := BlankManager().SetMinWorkers(1).SetMaxWorkers(100).
+	// manager := conveyor.CreateManager().SetMinWorkers(1).SetMaxWorkers(100).
 	// 	SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 
 	// manager.B = NewConveyorBelt()

@@ -89,7 +89,7 @@ Workers continuously pull jobs from their assigned channels.
 m := conveyor.CreateManager() // Creates a default manager
 // or configure manually:
 
-m := BlankManager().SetMinWorkers(1).SetMaxWorkers(100).
+m := conveyor.CreateManager().SetMinWorkers(1).SetMaxWorkers(100).
 		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 
 	m.B = NewConveyorBelt()
