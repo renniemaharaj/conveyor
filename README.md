@@ -1,38 +1,34 @@
-# Conveyor System - Manager, Job, and Worker
+# Conveyor - Dynamic Job Manager in Go
 
-This project implements a **dynamic worker pool manager** called `Manager` that processes queued jobs from a shared channel (`CONVEYOR_BELT`). It is designed for scenarios where workload varies over time, and the system should automatically scale the number of active workers up or down based on queue size.
+Conveyor is a dynamic worker pool manager for Go that efficiently processes queued jobs. It automatically scales the number of active workers based on queue load, making it ideal for fluctuating workloads.
 
 ## Features
 
-- **Automatic Scaling**: Dynamically increases or decreases workers based on job queue length.
-- **Configurable Thresholds**: Define when to scale up or down.
-- **Safe Shutdown**: Gracefully stops workers after finishing their current job.
-- **Ticker-based Monitoring**: Regularly checks the queue and adjusts worker count.
+* Automatic Scaling: Dynamically adjusts workers based on job queue size.
+* Configurable Thresholds: Set minimum/maximum workers and safe queue lengths.
+* Safe Shutdown: Gracefully stops workers after finishing current jobs.
+* Concurrent Execution: Workers run in goroutines by default.
+* Job Callbacks: Optional `OnSuccess` and `OnError` hooks for job outcomes.
 
 ## Components
 
 ### Manager
 
-Responsible for:
+* Starts the initial worker pool.
+* Monitors queue size and scales workers.
+* Handles safe shutdown.
 
-- Starting the initial worker pool.
-- Monitoring queue size.
-- Scaling workers up or down.
-- Stopping all workers safely.
+Key Parameters:
 
-Key parameters:
-
-- `minWorkersAllowed`: Minimum workers to keep running.
-- `maxWorkersAllowed`: Maximum workers allowed.
-- `safeQueueLength`: Queue length threshold to add workers.
-- `ticker`: Interval at which the manager checks the queue.
+* `minWorkersAllowed` - Minimum workers.
+* `maxWorkersAllowed` - Maximum workers.
+* `safeQueueLength` - Threshold to scale up.
+* `ticker` - Interval to check the queue.
 
 ### Worker
 
-A worker executes jobs pulled from its assigned `CONVEYOR_BELT`. Each worker runs in its own go routine until:
-
-- Stopped by the manager.
-- Program terminates.
+* Executes jobs pulled from the assigned conveyor belt.
+* Runs in its own goroutine until stopped or program exits.
 
 ### Job
 
@@ -40,61 +36,50 @@ Represents a unit of work:
 
 ```go
 Job {
-    Context context.Context `json:"context"`
-	Param   any             `json:"params"` // Paramter for consumption
-
-	// Consume function for the worker
-	Consume func(params any) error `json:"consume"`
-	// On success callback function
-	OnSuccess func(w Worker, j *Job) `json:"onSuccess"`
-	// On error callback function
-	OnError func(w Worker, j *Job) `json:"onError"`
+    Context context.Context
+    Param   any
+    Consume func(params any) error
+    OnSuccess func(w Worker, j *Job)
+    OnError   func(w Worker, j *Job)
 }
 ```
 
 ### Conveyor Belt
 
-Manager specific job queues
+A channel-based queue for jobs:
 
 ```go
-// The conveyor belt struct containing a single channel of jobs
 type ConveyorBelt struct {
-	C chan Job
+    C chan Job
 }
 
-// Creates and returns a new ConveyorBelt with initialized channel
 func NewConveyorBelt() *ConveyorBelt {
-	return &ConveyorBelt{C: make(chan Job, 100)}
+    return &ConveyorBelt{C: make(chan Job, 100)}
 }
 
-// Pushes a job to the conveyor belt
 func (b *ConveyorBelt) Push(j *Job) {
-	b.C <- *j
+    b.C <- *j
 }
 
-// Takes a job from the conveyor belt
 func (b *ConveyorBelt) Take() *Job {
-	j := <-b.C
-	return &j
+    j := <-b.C
+    return &j
 }
 ```
 
-Workers continuously pull jobs from their assigned channels.
+---
 
 ## Usage
 
 ### Creating and Starting a Manager
 
 ```go
-m := conveyor.CreateManager() // Creates a default manager
-// or configure manually:
-
+m := conveyor.CreateManager() // default manager
+// or configure manually
 m := conveyor.CreateManager().SetMinWorkers(1).SetMaxWorkers(100).
-		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
-
-	m.B = NewConveyorBelt()
-	m.quit = make(chan struct{})
-
+    SetSafeQueueLength(10).SetTimePerTicker(time.Second/4)
+m.B = NewConveyorBelt()
+m.quit = make(chan struct{})
 m.Start()
 ```
 
@@ -102,68 +87,56 @@ m.Start()
 
 ```go
 // Define a jobParam struct
-// This can be anything, (any)
 type JobParam struct {
-	A string
+    A string
 }
 
 jobParam := &JobParam{A: "Hello World"}
 
-// Without success, error functions
+// Without callbacks
 for range 100 {
-		manager.B.Push(&conveyor.Job{
-			Context: context.Background(),
-			Param:   jobParam,
-			Consume: func(param any) error {
-				time.Sleep(time.Second)
-				jParam := param.(*JobParam)
-				fmt.Println(jParam.A)
-				return nil
-			},
-		})
-	}
+    manager.B.Push(&conveyor.Job{
+        Context: context.Background(),
+        Param: jobParam,
+        Consume: func(param any) error {
+            time.Sleep(time.Second)
+            jParam := param.(*JobParam)
+            fmt.Println(jParam.A)
+            return nil
+        },
+    })
+}
 
-// With success, error functions (optional)
-    for range 100 {
-		manager.B.Push(&Job{
-			Context: context.Background(),
-			Consume: func(j any) error {
-				time.Sleep(time.Second)
-				return fmt.Errorf("en error") // Switch this
-                // return nil
-			},
-			OnSuccess: func(w Worker, j *Job) {
-				fmt.Println("Test job completed")
-			},
-			OnError: func(w Worker, j *Job) {
-				fmt.Println("Test job failed")
-			},
-		})
-	}
+// With OnSuccess and OnError callbacks
+for range 100 {
+    manager.B.Push(&Job{
+        Context: context.Background(),
+        Consume: func(j any) error {
+            time.Sleep(time.Second)
+            return fmt.Errorf("an error") // or return nil
+        },
+        OnSuccess: func(w Worker, j *Job) {
+            fmt.Println("Test job completed")
+        },
+        OnError: func(w Worker, j *Job) {
+            fmt.Println("Test job failed")
+        },
+    })
+}
 ```
 
 ### Stopping the Manager
 
 ```go
-m.Stop() // Stops the ticker and gracefully shuts down workers
+m.Stop() // stops ticker and shuts down workers gracefully
 ```
-
-## Example Execution
-
-1. Start the manager.
-2. Push jobs to manager's `CONVEYOR_BELT`.
-```go
-manager.B.Push(&conveyor.Job{})
-```
-3. Manager automatically adjusts the worker count (up & down) based on job backlog.
-4. Stop the manager when done.
-
-## When to Use
-
-- Processing tasks where load fluctuates.
-- Systems requiring efficient resource use.
-- Scenarios where idle workers should be reduced automatically.
 
 ---
 
-This design allows a balance between responsiveness and resource efficiency by only running the number of workers needed to handle the current workload.
+## When to Use
+
+* Tasks with fluctuating workloads.
+* Systems requiring efficient resource usage.
+* Scenarios where idle workers should be reduced automatically.
+
+This design balances responsiveness and resource efficiency by running only the number of workers needed for current workload.
