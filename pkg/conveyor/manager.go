@@ -8,10 +8,11 @@ import (
 
 // The manager shape
 type Manager struct {
-	mu      sync.Mutex
-	workers []*Worker
-	ticker  *time.Ticker
-	quit    chan struct{} // Manager's quit signal channel
+	mu        sync.Mutex
+	workers   []*Worker
+	ticker    *time.Ticker
+	debugging bool          // Whether manager should log
+	quit      chan struct{} // Manager's quit signal channel
 
 	minWorkersAllowed int
 	maxWorkersAllowed int
@@ -31,7 +32,7 @@ func CreateManager() *Manager {
 	m := blankManager().SetMinWorkers(1).SetMaxWorkers(100).
 		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 	m.B = NewConveyorBelt()
-	m.quit = make(chan struct{})
+	m.quit = make(chan struct{}) // initialize the quit channel
 
 	log.Printf(`
 	Creating a manager. Will allow %d min, and %d max workers.
@@ -42,7 +43,7 @@ func CreateManager() *Manager {
 }
 
 // Manager start function
-func (m *Manager) Start() {
+func (m *Manager) Start() *Manager {
 	// Initialize min workers
 	for range m.minWorkersAllowed {
 		m.scaleWorkersUp()
@@ -60,6 +61,7 @@ func (m *Manager) Start() {
 			}
 		}
 	}()
+	return m
 }
 
 // Manager stop function will close cleanup its channel and stop ticker
@@ -75,11 +77,15 @@ func (m *Manager) routineCheck() {
 
 	queueLen := len(m.B.C)
 	if queueLen > m.safeQueueLength && len(m.workers) < m.maxWorkersAllowed {
-		log.Printf("At %d current workers, scaling up. Jobs queued: %d\n", len(m.workers), queueLen)
 		m.scaleWorkersUp()
+		if m.debugging {
+			log.Printf("Workers: %d, after scaling up. Jobs queued: %d\n", len(m.workers), queueLen)
+		}
 	} else if queueLen <= m.safeQueueLength && len(m.workers) > m.minWorkersAllowed {
-		log.Printf("At %d current workers, scaling down. Jobs queued: %d\n", len(m.workers), queueLen)
 		m.scaleWorkersDown()
+		if m.debugging {
+			log.Printf("Workers: %d, after scaling down. Jobs queued: %d\n", len(m.workers), queueLen)
+		}
 	}
 }
 

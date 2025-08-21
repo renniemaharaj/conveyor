@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+// Set the manager's debug mode
+func (m *Manager) SetDebugging(b bool) *Manager {
+	m.debugging = b
+	return m
+}
+
 // Set the manager's min workers allowed
 func (m *Manager) SetMinWorkers(mw int) *Manager {
 	m.minWorkersAllowed = mw

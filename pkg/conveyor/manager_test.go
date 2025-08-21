@@ -3,47 +3,73 @@ package conveyor
 import (
 	"context"
 	"fmt"
-	"testing"
+	"sync"
 	"time"
+
+	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func TestManagerScaling(t *testing.T) {
-	minWorkers := 1
+type OddEven struct {
+	m    sync.Mutex
+	odd  uint8
+	even uint8
+}
 
-	manager := CreateManager().SetTimePerTicker(time.Second / 10)
-	manager.Start()
+func (oe *OddEven) Odd() {
+	oe.m.Lock()
+	oe.odd++
+	oe.m.Unlock()
+}
 
+func (oe *OddEven) Even() {
+	oe.m.Lock()
+	oe.even++
+	oe.m.Unlock()
+}
+
+func TestManager(t *testing.T) {
+	manager := CreateManager().SetTimePerTicker(time.Second / 10).SetMinWorkers(0).
+		SetDebugging(true).Start()
+
+	t.Cleanup(manager.Stop)
+
+	oddEven := &OddEven{}
 	// scale up scenario
-	for range 100 {
+	for i := range 100 {
 		manager.B.Push(&Job{
 			Context: context.Background(),
-			Consume: func(j any) error {
+			Param:   i%2 == 0,
+			Consume: func(p any) error {
 				time.Sleep(time.Second)
-				return fmt.Errorf("en error")
+				if param := p.(bool); param {
+					return nil // represents success (even)
+				}
+
+				return fmt.Errorf("failure") // represents failure (odd)
 			},
-			OnSuccess: func(w Worker, j *Job) {
-				fmt.Println("Test job completed")
-			},
-			OnError: func(w Worker, j *Job) {
-				fmt.Println("Test job failed")
-			},
+			OnSuccess: func(w Worker, j *Job) { oddEven.Even() },
+			OnError:   func(w Worker, j *Job) { oddEven.Odd() },
 		})
 	}
 
 	time.Sleep(5 * time.Second) // Let workers scale up
 
 	// check that workers increased
-	if len(manager.workers) <= minWorkers {
-		t.Errorf("Expected workers to scale up, but only %d running", len(manager.workers))
-	}
+	require.Eventually(t, func() bool {
+		return len(manager.workers) > manager.minWorkersAllowed
+	}, 5*time.Second, 100*time.Millisecond, "workers should scale up")
+
+	require.Eventually(t, func() bool {
+		return oddEven.even == 50 && oddEven.odd == 50
+	}, 5*time.Second, 100*time.Millisecond, "Expected 50 odds and 50 evens")
 
 	// scale down scenario
 	time.Sleep(3 * time.Second)
 
 	// should have reduced workers by now
-	if len(manager.workers) != minWorkers {
-		t.Errorf("Expected workers to scale back down to %d, but got %d", minWorkers, len(manager.workers))
-	}
-
-	manager.Stop()
+	require.Eventually(t, func() bool {
+		return len(manager.workers) == manager.minWorkersAllowed
+	}, 5*time.Second, 100*time.Millisecond, "workers should scale down")
 }
