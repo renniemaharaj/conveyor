@@ -20,12 +20,12 @@ func main() {
 	// manager := conveyor.CreateManager().SetMinWorkers(1).SetMaxWorkers(100).
 	// 	SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4).SetDebugging(false).Start()
 
-	// Unopinionated job param
+	// unopinionated job param
 	jobParam := &JobParam{
 		A: "Hello World",
 	}
 
-	// Adding workers scenario
+	// adding workers scenario
 	for range 100 {
 		manager.B.Push(&conveyor.Job{
 			Context: context.Background(),
@@ -36,6 +36,8 @@ func main() {
 				fmt.Println(jParam.A)
 				return nil
 			},
+			OnSuccess: func(w conveyor.Worker, j *conveyor.Job) {},
+			OnError:   func(w conveyor.Worker, j *conveyor.Job) {},
 		})
 	}
 

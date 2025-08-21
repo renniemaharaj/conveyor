@@ -40,10 +40,11 @@ func TestManager(t *testing.T) {
 	for i := range 100 {
 		manager.B.Push(&Job{
 			Context: context.Background(),
-			Param:   i%2 == 0,
-			Consume: func(p any) error {
+			Param:   i%2 == 0, // definition of param inferred as bool
+			Consume: func(param any) error {
 				time.Sleep(time.Second)
-				if param := p.(bool); param {
+				// type cast param to your own definition
+				if param := param.(bool); param {
 					return nil // represents success (even)
 				}
 
@@ -54,7 +55,7 @@ func TestManager(t *testing.T) {
 		})
 	}
 
-	time.Sleep(5 * time.Second) // Let workers scale up
+	time.Sleep(5 * time.Second) // let workers scale up
 
 	// check that workers increased
 	require.Eventually(t, func() bool {

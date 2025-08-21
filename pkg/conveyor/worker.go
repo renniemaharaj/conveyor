@@ -3,7 +3,7 @@ package conveyor
 // Struct type for a worker
 type Worker struct {
 	canWork bool
-	B       ConveyorBelt // The worker's assigned channel
+	B       ConveyorBelt // the worker's assigned channel
 }
 
 // Creates and returns a worker with an assigned channel

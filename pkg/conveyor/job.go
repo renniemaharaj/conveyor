@@ -10,7 +10,7 @@ type Job struct {
 	Param   any             `json:"params"` // Paramter for consumption
 
 	// Consume function for the worker
-	Consume func(params any) error `json:"consume"`
+	Consume func(param any) error `json:"consume"`
 	// On success callback function
 	OnSuccess func(w Worker, j *Job) `json:"onSuccess"`
 	// On error callback function

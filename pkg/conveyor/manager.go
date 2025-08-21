@@ -44,12 +44,12 @@ func CreateManager() *Manager {
 
 // Manager start function
 func (m *Manager) Start() *Manager {
-	// Initialize min workers
+	// initialize min workers
 	for range m.minWorkersAllowed {
 		m.scaleWorkersUp()
 	}
 
-	// Routine dynamically scales the manager's workers
+	// routine dynamically scales the manager's workers
 	go func() {
 		for {
 			select {
