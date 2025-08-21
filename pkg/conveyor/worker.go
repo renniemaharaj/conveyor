@@ -1,14 +1,21 @@
 package conveyor
 
+import "github.com/renniemaharaj/conveyor/internal/idgen"
+
 // Struct type for a worker
 type Worker struct {
+	id      int // The worker's id
 	canWork bool
 	B       ConveyorBelt // the worker's assigned channel
 }
 
+var (
+	idGenWorker = idgen.IDGenerator{}
+)
+
 // Creates and returns a worker with an assigned channel
-func NewWorker(b *ConveyorBelt, id int) *Worker {
-	return &Worker{canWork: false, B: *b}
+func CreateWorker(b *ConveyorBelt) *Worker {
+	return &Worker{canWork: false, B: *b, id: idGenWorker.NewUniqueID()}
 }
 
 // Start function of a worker

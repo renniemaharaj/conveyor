@@ -95,33 +95,34 @@ jobParam := &JobParam{A: "Hello World"}
 
 // Without callbacks
 for range 100 {
-    manager.B.Push(&conveyor.Job{
-        Context: context.Background(),
-        Param: jobParam,
-        Consume: func(param any) error {
-            time.Sleep(time.Second)
-            jParam := param.(*JobParam)
-            fmt.Println(jParam.A)
-            return nil
-        },
-    })
+    manager.B.Push(conveyor.CreateJob(
+		context.Background(),
+		jobParam,
+		func(param any) error {
+			time.Sleep(time.Second)
+			jParam := param.(*JobParam)
+			fmt.Println(jParam.A)
+			return nil
+			},
+		// func(w conveyor.Worker, j *conveyor.Job) {},
+		// func(w conveyor.Worker, j *conveyor.Job) {},
+	))
 }
 
 // With OnSuccess and OnError callbacks
 for range 100 {
-    manager.B.Push(&Job{
-        Context: context.Background(),
-        Consume: func(j any) error {
-            time.Sleep(time.Second)
-            return fmt.Errorf("an error") // or return nil
-        },
-        OnSuccess: func(w Worker, j *Job) {
-            fmt.Println("Test job completed")
-        },
-        OnError: func(w Worker, j *Job) {
-            fmt.Println("Test job failed")
-        },
-    })
+    manager.B.Push(conveyor.CreateJob(
+		context.Background(),
+		jobParam,
+		func(param any) error {
+			time.Sleep(time.Second)
+			jParam := param.(*JobParam)
+			fmt.Println(jParam.A)
+			return nil
+			},
+		func(w conveyor.Worker, j *conveyor.Job) {},
+		func(w conveyor.Worker, j *conveyor.Job) {},
+	))
 }
 ```
 

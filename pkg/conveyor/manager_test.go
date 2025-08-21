@@ -38,10 +38,10 @@ func TestManager(t *testing.T) {
 	oddEven := &OddEven{}
 	// scale up scenario
 	for i := range 100 {
-		manager.B.Push(&Job{
-			Context: context.Background(),
-			Param:   i%2 == 0, // definition of param inferred as bool
-			Consume: func(param any) error {
+		manager.B.Push(CreateJob(
+			context.Background(),
+			i%2 == 0, // definition of param inferred as bool
+			func(param any) error {
 				time.Sleep(time.Second)
 				// type cast param to your own definition
 				if param := param.(bool); param {
@@ -50,9 +50,9 @@ func TestManager(t *testing.T) {
 
 				return fmt.Errorf("failure") // represents failure (odd)
 			},
-			OnSuccess: func(w Worker, j *Job) { oddEven.Even() },
-			OnError:   func(w Worker, j *Job) { oddEven.Odd() },
-		})
+			func(w Worker, j *Job) { oddEven.Even() },
+			func(w Worker, j *Job) { oddEven.Odd() },
+		))
 	}
 
 	time.Sleep(5 * time.Second) // let workers scale up

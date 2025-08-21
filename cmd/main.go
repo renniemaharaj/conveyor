@@ -27,18 +27,19 @@ func main() {
 
 	// adding workers scenario
 	for range 100 {
-		manager.B.Push(&conveyor.Job{
-			Context: context.Background(),
-			Param:   jobParam,
-			Consume: func(param any) error {
+		manager.B.Push(conveyor.CreateJob(
+			context.Background(),
+			jobParam,
+			func(param any) error {
 				time.Sleep(time.Second)
 				jParam := param.(*JobParam)
 				fmt.Println(jParam.A)
 				return nil
 			},
-			OnSuccess: func(w conveyor.Worker, j *conveyor.Job) {},
-			OnError:   func(w conveyor.Worker, j *conveyor.Job) {},
-		})
+			func(w conveyor.Worker, j *conveyor.Job) {},
+			func(w conveyor.Worker, j *conveyor.Job) {},
+		))
+
 	}
 
 	select {}

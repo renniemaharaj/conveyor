@@ -4,11 +4,14 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/renniemaharaj/conveyor/internal/idgen"
 )
 
 // The manager shape
 type Manager struct {
 	mu        sync.Mutex
+	id        int // A unique id for the manager
 	workers   []*Worker
 	ticker    *time.Ticker
 	debugging bool          // Whether manager should log
@@ -21,15 +24,19 @@ type Manager struct {
 	B *ConveyorBelt // The manager's conveyor belt
 }
 
+var (
+	idGenManager = idgen.IDGenerator{}
+)
+
 // Internal blank manager function
-func blankManager() *Manager {
-	m := &Manager{}
+func createManager() *Manager {
+	m := &Manager{id: idGenManager.NewUniqueID()}
 	return m
 }
 
 // Create a new manager with default configuration
 func CreateManager() *Manager {
-	m := blankManager().SetMinWorkers(1).SetMaxWorkers(100).
+	m := createManager().SetMinWorkers(1).SetMaxWorkers(100).
 		SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
 	m.B = NewConveyorBelt()
 	m.quit = make(chan struct{}) // initialize the quit channel
@@ -91,7 +98,7 @@ func (m *Manager) routineCheck() {
 
 // scaleWorkersUp internal function, creates and starts a new worker
 func (m *Manager) scaleWorkersUp() {
-	w := NewWorker(m.B, len(m.workers)) // Create a worker by assigning the manager's conveyor belt
+	w := CreateWorker(m.B) // Create a worker by assigning the manager's conveyor belt
 	m.workers = append(m.workers, w)
 	go w.Start()
 }
