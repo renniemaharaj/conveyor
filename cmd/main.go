@@ -15,15 +15,10 @@ type JobParam struct {
 }
 
 func main() {
-	manager := conveyor.CreateManager() // Use the default manager or build a custom
+	manager := conveyor.CreateManager().Start() // Use the default manager or build a custom
 
 	// manager := conveyor.CreateManager().SetMinWorkers(1).SetMaxWorkers(100).
-	// 	SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4)
-
-	// manager.B = NewConveyorBelt()
-	// manager.quit = make(chan struct{})
-
-	manager.Start()
+	// 	SetSafeQueueLength(10).SetTimePerTicker(time.Second / 4).SetDebugging(false).Start()
 
 	// Unopinionated job param
 	jobParam := &JobParam{
